@@ -1983,7 +1983,7 @@ static int sofia_dialog_probe_callback(void *pArg, int argc, char **argv, char *
 		return 0;
 	}
 
-  // If the dialog is in the "early" state check the presence_disable_early profile flag and channel variable.
+	// If the dialog is in the "early" state check the presence_disable_early profile flag and channel variable.
 	// When presence_disable_early is set the dialog should not influence the result of the probe and resulting NOTIFY that is sent.
 	if (!strcasecmp(state, "early") && (session = switch_core_session_locate(uuid))) {
 		switch_channel_t *channel = switch_core_session_get_channel(session);
