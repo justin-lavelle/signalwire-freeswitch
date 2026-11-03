@@ -188,6 +188,7 @@ struct switch_rtp_engine_s {
 	switch_codec_settings_t codec_settings;
 	switch_media_flow_t rmode;
 	switch_media_flow_t smode;
+	switch_media_flow_t rtp_rmode; /* remote media flow last applied to the RTP session (SUP-8485) */
 	switch_thread_id_t thread_id;
 	switch_thread_id_t thread_write_lock;
 	uint8_t new_ice;
@@ -2041,6 +2042,9 @@ SWITCH_DECLARE(switch_status_t) switch_media_handle_create(switch_media_handle_t
 		session->media_handle->engines[SWITCH_MEDIA_TYPE_AUDIO].smode = SWITCH_MEDIA_FLOW_DISABLED;
 		session->media_handle->engines[SWITCH_MEDIA_TYPE_VIDEO].smode = SWITCH_MEDIA_FLOW_DISABLED;
 		session->media_handle->engines[SWITCH_MEDIA_TYPE_TEXT].smode = SWITCH_MEDIA_FLOW_DISABLED;
+		session->media_handle->engines[SWITCH_MEDIA_TYPE_AUDIO].rtp_rmode = SWITCH_MEDIA_FLOW_DISABLED; /* SUP-8485 */
+		session->media_handle->engines[SWITCH_MEDIA_TYPE_VIDEO].rtp_rmode = SWITCH_MEDIA_FLOW_DISABLED; /* SUP-8485 */
+		session->media_handle->engines[SWITCH_MEDIA_TYPE_TEXT].rtp_rmode = SWITCH_MEDIA_FLOW_DISABLED; /* SUP-8485 */
 
 		for (i = 0; i < CRYPTO_INVALID; i++) {
 			session->media_handle->engines[SWITCH_MEDIA_TYPE_VIDEO].ssec[i].crypto_type = i;
@@ -8638,22 +8642,36 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 		switch_port_t remote_port = switch_rtp_get_remote_port(a_engine->rtp_session);
 
 		if (remote_host && remote_port && !strcmp(remote_host, a_engine->cur_payload_map->remote_sdp_ip) &&
-			remote_port == a_engine->cur_payload_map->remote_sdp_port) {
+			remote_port == a_engine->cur_payload_map->remote_sdp_port && a_engine->rmode == a_engine->rtp_rmode) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio params are unchanged for %s.\n",
 							  switch_channel_get_name(session->channel));
 			a_engine->cur_payload_map->negotiated = 1;
 			//XX
 			goto video;
 		} else {
-			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio params changed for %s from %s:%d to %s:%d\n",
-							  switch_channel_get_name(session->channel),
-							  remote_host, remote_port, a_engine->cur_payload_map->remote_sdp_ip, a_engine->cur_payload_map->remote_sdp_port);
+			if (remote_host && remote_port && !strcmp(remote_host, a_engine->cur_payload_map->remote_sdp_ip) &&
+				remote_port == a_engine->cur_payload_map->remote_sdp_port) {
+				/* SUP-8485: same media IP:port but the remote media direction changed
+				   (e.g. carrier answered a=inactive then re-INVITEd a=sendrecv). The old
+				   code treated this as "unchanged" and skipped media re-activation, leaving
+				   RTP toward the already-answered partner leg stalled (one-way audio). Fall
+				   through so the RTP flow is re-applied for the new direction. */
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
+								  "Audio media flow changed for %s (rmode %d -> %d); re-activating RTP\n",
+								  switch_channel_get_name(session->channel), a_engine->rtp_rmode, a_engine->rmode);
+			} else {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio params changed for %s from %s:%d to %s:%d\n",
+								  switch_channel_get_name(session->channel),
+								  remote_host, remote_port, a_engine->cur_payload_map->remote_sdp_ip, a_engine->cur_payload_map->remote_sdp_port);
+			}
 
 			switch_snprintf(tmp, sizeof(tmp), "%d", a_engine->cur_payload_map->remote_sdp_port);
 			switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_IP_VARIABLE, a_engine->cur_payload_map->remote_sdp_ip);
 			switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_PORT_VARIABLE, tmp);
 			switch_channel_execute_on(session->channel, "execute_on_audio_change");
 		}
+
+		a_engine->rtp_rmode = a_engine->rmode;
 	}
 
 	if (!switch_channel_test_flag(session->channel, CF_PROXY_MEDIA)) {
@@ -8760,6 +8778,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if (switch_rtp_ready(a_engine->rtp_session)) {
 			switch_rtp_set_payload_map(a_engine->rtp_session, &a_engine->payload_map);
+			a_engine->rtp_rmode = a_engine->rmode; /* SUP-8485: track flow applied at RTP creation */
 		}
 	}
 
