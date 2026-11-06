@@ -581,6 +581,23 @@
 		</condition>
     </extension>
 
+    <extension name="inactive_answer">
+      <condition field="destination_number" expression="^inactive_answer$">
+        <action application="answer"/>
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="bridge" data="{absolute_codec_string=PCMU}sofia/external/uas@127.0.0.1:5092"/>
+      </condition>
+    </extension>
+
+    <extension name="inactive_answer_fix">
+      <condition field="destination_number" expression="^inactive_answer_fix$">
+        <action application="set" data="rtp_ignore_inactive_answer=true"/>
+        <action application="answer"/>
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="bridge" data="{absolute_codec_string=PCMU}sofia/external/uas@127.0.0.1:5092"/>
+      </condition>
+    </extension>
+
     <extension name="sipp_telephone_check">
       <condition field="destination_number" expression="^1212121212$">
         <action application="answer"/>
