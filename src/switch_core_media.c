@@ -4774,7 +4774,13 @@ static void switch_core_media_set_rmode(switch_core_session_t *session, switch_m
 
 	if (switch_core_session_get_partner(session, &other_session) == SWITCH_STATUS_SUCCESS) {
 
-		if (sdp_type == SDP_ANSWER && (switch_channel_test_flag(other_session->channel, CF_REINVITE) || switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_OUTBOUND)) {
+		/* An inactive answer means the far end is not sending yet. Copying that onto the
+		   bridged leg makes switch_core_media_write_frame() drop audio toward it. The leg
+		   that received the answer stays sendrecv unless it had offered inactive, so leave
+		   the partner sendrecv too. A callee can answer a=inactive and later re-INVITE
+		   a=sendrecv on the same address. */
+		if (rmode != SWITCH_MEDIA_FLOW_INACTIVE && sdp_type == SDP_ANSWER &&
+			(switch_channel_test_flag(other_session->channel, CF_REINVITE) || switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_OUTBOUND)) {
 			switch_core_media_set_smode(other_session, type, rmode, sdp_type);
 		}
 
