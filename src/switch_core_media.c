@@ -4779,15 +4779,22 @@ static void switch_core_media_set_rmode(switch_core_session_t *session, switch_m
 	engine->rmode = rmode;
 
 	if (switch_core_session_get_partner(session, &other_session) == SWITCH_STATUS_SUCCESS) {
+		switch_bool_t skip_inactive = ignore_inactive_answer;
 
-		/* When rtp-ignore-inactive-answer is set, do not copy an inactive answer onto
-		   the bridged leg. write_frame() drops audio unless that leg is sendrecv or
-		   sendonly, and the leg that received the answer stays sendrecv unless it had
-		   offered inactive. A callee can answer a=inactive and later re-INVITE
-		   a=sendrecv on the same address. */
+		if (!skip_inactive) {
+			skip_inactive = switch_channel_var_true(session->channel, "rtp_ignore_inactive_answer") ||
+				switch_channel_var_true(other_session->channel, "rtp_ignore_inactive_answer");
+		}
+
+		/* When rtp-ignore-inactive-answer is set, or either leg has
+		   rtp_ignore_inactive_answer, do not copy an inactive answer onto the bridged
+		   leg. write_frame() drops audio unless that leg is sendrecv or sendonly, and
+		   the leg that received the answer stays sendrecv unless it had offered
+		   inactive. A callee can answer a=inactive and later re-INVITE a=sendrecv on
+		   the same address. */
 		if (sdp_type == SDP_ANSWER &&
 			(switch_channel_test_flag(other_session->channel, CF_REINVITE) || switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_OUTBOUND) &&
-			(!ignore_inactive_answer || rmode != SWITCH_MEDIA_FLOW_INACTIVE)) {
+			(!skip_inactive || rmode != SWITCH_MEDIA_FLOW_INACTIVE)) {
 			switch_core_media_set_smode(other_session, type, rmode, sdp_type);
 		}
 

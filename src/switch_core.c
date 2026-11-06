@@ -2983,6 +2983,9 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 	case SCSC_MDNS_RESOLVE:
 		switch_core_media_set_resolveice(!!oldintval);
 		break;
+	case SCSC_RTP_IGNORE_INACTIVE_ANSWER:
+		switch_core_media_set_ignore_inactive_answer(oldintval ? SWITCH_TRUE : SWITCH_FALSE);
+		break;
 	case SCSC_SHUTDOWN_CAUSE:
 		runtime.shutdown_cause = oldintval;
 		break;

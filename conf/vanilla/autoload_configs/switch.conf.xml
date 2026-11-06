@@ -160,6 +160,9 @@
 	 Do not copy an SDP answer of a=inactive onto the bridged leg. That leg stays
 	 sendrecv, so audio toward it is not dropped when a callee answers inactive and
 	 later re-INVITEs sendrecv on the same address. Default: false.
+	 Change at runtime without a restart:
+	   fsctl rtp_ignore_inactive_answer enable|disable
+	 Enable for one call by setting rtp_ignore_inactive_answer=true on either leg.
     -->
     <!-- <param name="rtp-ignore-inactive-answer" value="true"/> -->
 
