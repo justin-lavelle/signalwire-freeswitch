@@ -2312,6 +2312,8 @@ static void switch_load_core_config(const char *file)
 					}
 				} else if (!strcasecmp(var, "ice-resolve-candidate")) {
 					switch_core_media_set_resolveice(switch_true(val));
+				} else if (!strcasecmp(var, "rtp-ignore-inactive-answer")) {
+					switch_core_media_set_ignore_inactive_answer(switch_true(val));
 				} else if (!strcasecmp(var, "rtp-start-port") && !zstr(val)) {
 					switch_rtp_set_start_port((switch_port_t) atoi(val));
 				} else if (!strcasecmp(var, "rtp-end-port") && !zstr(val)) {
