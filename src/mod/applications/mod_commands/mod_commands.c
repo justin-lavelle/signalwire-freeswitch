@@ -2417,7 +2417,7 @@ SWITCH_STANDARD_API(uptime_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define CTL_SYNTAX "[api_expansion [on|off]|recover|send_sighup|hupall|pause [inbound|outbound]|resume [inbound|outbound]|shutdown [cancel|elegant|asap|now|restart]|sps|sps_peak_reset|sync_clock|sync_clock_when_idle|reclaim_mem|max_sessions|min_dtmf_duration [num]|max_dtmf_duration [num]|default_dtmf_duration [num]|min_idle_cpu|loglevel [level]|debug_level [level]|mdns_resolve [enable|disable]]"
+#define CTL_SYNTAX "[api_expansion [on|off]|recover|send_sighup|hupall|pause [inbound|outbound]|resume [inbound|outbound]|shutdown [cancel|elegant|asap|now|restart]|sps|sps_peak_reset|sync_clock|sync_clock_when_idle|reclaim_mem|max_sessions|min_dtmf_duration [num]|max_dtmf_duration [num]|default_dtmf_duration [num]|min_idle_cpu|loglevel [level]|debug_level [level]|mdns_resolve [enable|disable]|rtp_ignore_inactive_answer [enable|disable]]"
 SWITCH_STANDARD_API(ctl_function)
 {
 	int argc;
@@ -2686,6 +2686,25 @@ SWITCH_STANDARD_API(ctl_function)
 			}
 			if (set) {
 				switch_core_session_ctl(SCSC_MDNS_RESOLVE, &arg);
+				stream->write_function(stream, "+OK\n");
+				arg = 0;
+			} else {
+				stream->write_function(stream, "-ERR Invalid command\nUSAGE: fsctl %s\n", CTL_SYNTAX);
+				goto end;
+			}
+		} else if (!strcasecmp(argv[0], "rtp_ignore_inactive_answer")) {
+			switch_bool_t set = 0;
+			if (argv[1]) {
+				if (!strcasecmp(argv[1], "enable")) {
+					arg = 1;
+					set = 1;
+				} else if (!strcasecmp(argv[1], "disable")) {
+					arg = 0;
+					set = 1;
+				}
+			}
+			if (set) {
+				switch_core_session_ctl(SCSC_RTP_IGNORE_INACTIVE_ANSWER, &arg);
 				stream->write_function(stream, "+OK\n");
 				arg = 0;
 			} else {
@@ -7808,6 +7827,8 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_commands_load)
 	switch_console_set_complete("add fsctl send_sighup");
 	switch_console_set_complete("add fsctl mdns_resolve disable");
 	switch_console_set_complete("add fsctl mdns_resolve enable");
+	switch_console_set_complete("add fsctl rtp_ignore_inactive_answer disable");
+	switch_console_set_complete("add fsctl rtp_ignore_inactive_answer enable");
 	switch_console_set_complete("add interface_ip auto ::console::list_interfaces");
 	switch_console_set_complete("add interface_ip ipv4 ::console::list_interfaces");
 	switch_console_set_complete("add interface_ip ipv6 ::console::list_interfaces");
