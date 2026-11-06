@@ -289,6 +289,7 @@ switch_srtp_crypto_suite_t SUITES[CRYPTO_INVALID] = {
 };
 
 static switch_bool_t ice_resolve_candidate = 0;
+static switch_bool_t ignore_inactive_answer = SWITCH_FALSE;
 
 SWITCH_DECLARE(void) switch_core_media_set_resolveice(switch_bool_t resolve_ice)
 {
@@ -298,6 +299,11 @@ SWITCH_DECLARE(void) switch_core_media_set_resolveice(switch_bool_t resolve_ice)
 SWITCH_DECLARE(switch_bool_t) switch_core_media_has_resolveice(void)
 {
 	return ice_resolve_candidate;
+}
+
+SWITCH_DECLARE(void) switch_core_media_set_ignore_inactive_answer(switch_bool_t ignore)
+{
+	ignore_inactive_answer = ignore;
 }
 
 
@@ -4774,13 +4780,14 @@ static void switch_core_media_set_rmode(switch_core_session_t *session, switch_m
 
 	if (switch_core_session_get_partner(session, &other_session) == SWITCH_STATUS_SUCCESS) {
 
-		/* An inactive answer means the far end is not sending yet. Copying that onto the
-		   bridged leg makes switch_core_media_write_frame() drop audio toward it. The leg
-		   that received the answer stays sendrecv unless it had offered inactive, so leave
-		   the partner sendrecv too. A callee can answer a=inactive and later re-INVITE
+		/* When rtp-ignore-inactive-answer is set, do not copy an inactive answer onto
+		   the bridged leg. write_frame() drops audio unless that leg is sendrecv or
+		   sendonly, and the leg that received the answer stays sendrecv unless it had
+		   offered inactive. A callee can answer a=inactive and later re-INVITE
 		   a=sendrecv on the same address. */
-		if (rmode != SWITCH_MEDIA_FLOW_INACTIVE && sdp_type == SDP_ANSWER &&
-			(switch_channel_test_flag(other_session->channel, CF_REINVITE) || switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_OUTBOUND)) {
+		if (sdp_type == SDP_ANSWER &&
+			(switch_channel_test_flag(other_session->channel, CF_REINVITE) || switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_OUTBOUND) &&
+			(!ignore_inactive_answer || rmode != SWITCH_MEDIA_FLOW_INACTIVE)) {
 			switch_core_media_set_smode(other_session, type, rmode, sdp_type);
 		}
 

@@ -157,6 +157,13 @@
     <!-- <param name="rtp-port-usage-robustness" value="true"/> -->
 
     <!--
+	 Do not copy an SDP answer of a=inactive onto the bridged leg. That leg stays
+	 sendrecv, so audio toward it is not dropped when a callee answers inactive and
+	 later re-INVITEs sendrecv on the same address. Default: false.
+    -->
+    <!-- <param name="rtp-ignore-inactive-answer" value="true"/> -->
+
+    <!--
 	 Store encryption keys for secure media in channel variables and call CDRs. Default: false.
 	 WARNING: If true, anyone with CDR access can decrypt secure media!
     -->
