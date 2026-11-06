@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<!-- Callee. Answers 200 OK with a=inactive, then re-INVITEs a=sendrecv
+     on the same media address and sends PCMU. The pcap is created by
+     run_inactive_answer.sh next to this file. -->
+<scenario name="UAS inactive then sendrecv">
+
+  <recv request="INVITE" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+
+      SIP/2.0 100 Trying
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <send>
+    <![CDATA[
+
+      SIP/2.0 180 Ringing
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <pause milliseconds="200"/>
+
+  <send retrans="500">
+    <![CDATA[
+
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:];tag=[pid]SIPpTag01[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Contact: <sip:[local_ip]:[local_port];transport=[transport]>
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=callee 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+      a=inactive
+
+    ]]>
+  </send>
+
+  <recv request="ACK" crlf="true">
+  </recv>
+
+  <!-- Window where the bridged leg has already taken the answer. -->
+  <pause milliseconds="1500"/>
+
+  <send retrans="500">
+    <![CDATA[
+
+      INVITE sip:[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: callee <sip:callee@[local_ip]:[local_port]>;tag=[pid]SIPpTag01[call_number]
+      To: access <sip:access@[remote_ip]:[remote_port]>[peer_tag_param]
+      Call-ID: [call_id]
+      CSeq: 1 INVITE
+      Contact: <sip:callee@[local_ip]:[local_port];transport=[transport]>
+      Max-Forwards: 70
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=callee 53655765 2353687638 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0
+      a=rtpmap:0 PCMU/8000
+      a=ptime:20
+      a=sendrecv
+
+    ]]>
+  </send>
+
+  <recv response="100" optional="true">
+  </recv>
+
+  <recv response="200" crlf="true" rtd="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+
+      ACK sip:[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: callee <sip:callee@[local_ip]:[local_port]>;tag=[pid]SIPpTag01[call_number]
+      To: access <sip:access@[remote_ip]:[remote_port]>[peer_tag_param]
+      Call-ID: [call_id]
+      CSeq: 1 ACK
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <nop>
+    <action>
+      <exec play_pcap_audio="sipp-scenarios/inactive_answer_pcmu.pcap"/>
+    </action>
+  </nop>
+
+  <pause milliseconds="2500"/>
+
+  <send retrans="500">
+    <![CDATA[
+
+      BYE sip:[remote_ip]:[remote_port] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: callee <sip:callee@[local_ip]:[local_port]>;tag=[pid]SIPpTag01[call_number]
+      To: access <sip:access@[remote_ip]:[remote_port]>[peer_tag_param]
+      Call-ID: [call_id]
+      CSeq: 2 BYE
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+
+  <recv response="200" crlf="true">
+  </recv>
+
+  <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
+  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
+
+</scenario>
